@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 plt.style.use('fivethirtyeight')
 
-from data.yfinance import get_data
+from data.from_yfinance import get_data
 from indicators.SMA import SMA
 
 

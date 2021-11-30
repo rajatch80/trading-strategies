@@ -6,18 +6,18 @@ Criteria:
     3. The Last day should have green candle stick
     4. The last price should be near the 44 Moving Average
 """
-import os
 import csv
+import os
 from datetime import datetime
 from pprint import pprint
 
-from data.yfinance import get_data
 from data.nse import (
     get_top_stocks_by_market_cap,
     get_nifty50_stocks,
     get_nifty500_stocks,
-    get_bad_stocks
+    stocks_to_ignore
 )
+from data.from_yfinance import get_data
 
 
 def get_price_data(tickers):
@@ -40,10 +40,13 @@ def is_probable_buy(df):
     # check for red candle, skip
     if df['Open'][-1] >= df['Close'][-1]:
         return
+    # check for bearish green candle, skip
+    if df['Close'][-1] - df['Open'][-1] < df['High'][-1] - df['Close'][-1]:
+        return
     high = df['High'][-1]
     low = df['Low'][-1]
     # 44 MA should lie between green candle's high-low range +- 1%
-    return (low - .02 * low) <= df['44MA'][-1] <= (high + .02 * high)
+    return (low - .02 * low) <= df['44MA'][-1] <= (high + .02 * high) and (df['Close'][-1] >= df['44MA'][-1])
 
 
 def calculate_buy_details(stock, df):
@@ -66,23 +69,25 @@ def calculate_buy_details(stock, df):
 
 
 def export_to_csv(trades):
-    curr_dir = os.path.dirname(os.path.abspath(__file__))
-    file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + "-TRADES.csv"
-    with open(file_name, "w", newline="") as f:
-        title = "stock,entry,stop_loss,target,quantity,money_to_trade".split(",")
-        cw = csv.DictWriter(f, title, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-        cw.writeheader()
-        cw.writerows(trades)
+    try:
+        curr_dir = os.path.dirname(os.path.abspath(__file__))
+        file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + "-TRADES-ANALYSIS.csv"
+        with open(file_name, "w", newline="") as f:
+            title = "stock,entry,stop_loss,target,quantity,money_to_trade".split(",")
+            cw = csv.DictWriter(f, title, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            cw.writeheader()
+            cw.writerows(trades)
+    except Exception as e:
+        print("FAILED TO EXPORT TO CSV")
+        print(e)
 
 
-def get_trades():
-    stocks = [x + ".NS" for x in get_nifty50_stocks()] + \
-             [x + ".NS" for x in get_top_stocks_by_market_cap()] + \
-             [x + ".NS" for x in get_nifty500_stocks()]
-    stocks = [x for x in stocks if x not in get_bad_stocks()]
-    stocks = list(set(stocks))
+def get_trades(stocks):
     trades = []
+    count = 1
     for stock in stocks:
+        print("Scanning stock number: ", count)
+        count += 1
         try:
             df = get_data(stock, period='350d', interval='1d')
             # Add 44 Moving Average
@@ -102,15 +107,19 @@ def get_trades():
         except Exception as e:
             print("Exception occurred >>>>>>>>>>>>>>>>>>>>>>>\n")
             print(e)
+        count += 1
     return trades
 
 
 def run():
-    trades = get_trades()
+    stocks = [x + ".NS" for x in get_nifty50_stocks()] + \
+             [x + ".NS" for x in get_top_stocks_by_market_cap()] + \
+             [x + ".NS" for x in get_nifty500_stocks()]
+    stocks = [x for x in stocks if x not in [x + ".NS" for x in stocks_to_ignore()]]
+    stocks = list(set(stocks))
+    print(len(stocks))
+    # stocks = ["LODHA.NS"]
+    trades = get_trades(stocks)
     pprint(trades)
     # optional, comment if not needed
-    try:
-        export_to_csv(trades)
-    except Exception as e:
-        print("FAILED TO EXPORT TO CSV")
-        print(e)
+    export_to_csv(trades)

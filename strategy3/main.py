@@ -11,7 +11,7 @@ Criteria:
 """
 import pandas as pd
 
-from data.yfinance import get_data
+from data.from_yfinance import get_data
 from data.nse import get_top_stocks_by_market_cap
 from data.nse import get_nifty50_stocks
 from indicators.SMA import SMA

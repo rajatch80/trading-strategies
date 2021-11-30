@@ -97,8 +97,8 @@ def get_nifty500_stocks():
     ]
 
 
-def get_bad_stocks():
-    return ["YESBANK", "IDEA"]
+def stocks_to_ignore():
+    return ["YESBANK", "IDEA", "SJVN", "NHPC", "IRFC", ""]
 
 
 def get_nifty50_tickers_from_web():
