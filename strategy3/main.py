@@ -13,7 +13,7 @@ import pandas as pd
 
 from data.yfinance import get_data
 from data.nse import get_top_stocks_by_market_cap
-from data.nse import get_nifty50_tickers
+from data.nse import get_nifty50_stocks
 from indicators.SMA import SMA
 
 
@@ -28,7 +28,7 @@ def get_price_df(tickers):
 
 
 def get_metrics_df():
-    tickers = ["^NSEI"] + [x + ".NS" for x in get_nifty50_tickers()]
+    tickers = ["^NSEI"] + [x + ".NS" for x in get_nifty50_stocks()]
     df = get_price_df(tickers)
     print(df)
     metrics = {}
