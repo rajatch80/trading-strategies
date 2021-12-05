@@ -1,13 +1,13 @@
 """
 
-This is for SWING TRADING   --- NOT INTRA DAY
+This is for INTRA DAY TRADING   --- NOT SWING
 
 This finds super performer stocks a/c to Rising Moving Average 44 and tells entry point
 Criteria:
     1. Moving Average 44 should be rising, not falling or sideways
-    2. Time frame is Daily
-    3. The Last day should have green candle stick
-    4. The last price should be near the 44 Moving Average
+    2. Time frame is 5 min / 15 min
+    3. The Last candle stick should be bullish (green or hammer)
+    4. The Last price should be near the 44 Moving Average
 """
 import csv
 import os
@@ -23,33 +23,31 @@ from data.nse import (
 from data.from_yfinance import get_data
 
 
-def get_price_data(tickers):
-    ohlc_data = {}
-    for ticker in tickers:
-        ohlc_data[ticker] = get_data(ticker, period='350d', interval='1d')
-        # start = '2021-01-01'
-        # end = '2021-11-30'
-        # ohlc_data[ticker] = get_data(ticker, start=start, end=end, interval='1d')
-    return ohlc_data
+def get_price_data(stock):
+    data = get_data(stock, period='1d', interval='15m')
+    # start = '2021-01-01'
+    # end = '2021-11-30'
+    # data = get_data(stock, start=start, end=end, interval='15m')
+    return data
 
 
 def is_stock_rising(df):
-    last_14_days_trend = df['44MA'][-14:].to_list()
-    # 44 MA should go up for last 14 consecutive days
-    return sorted(last_14_days_trend) == last_14_days_trend
+    trend = df['44MA'][-10:].to_list()
+    # 44 MA should go up for last 25 candles
+    return sorted(trend) == trend
 
 
 def is_probable_buy(df):
     # check for red candle, skip
-    if df['Open'][-1] >= df['Close'][-1]:
-        return
+    # if df['Open'][-1] >= df['Close'][-1]:
+    #     return
     # check for bearish green candle, skip
-    if df['Close'][-1] - df['Open'][-1] < df['High'][-1] - df['Close'][-1]:
-        return
+    # if df['Close'][-1] - df['Open'][-1] < df['High'][-1] - df['Close'][-1]:
+    #     return
     high = df['High'][-1]
     low = df['Low'][-1]
     # 44 MA should lie between green candle's high-low range +- 1%
-    return (low - .02 * low) <= df['44MA'][-1] <= (high + .02 * high) and (df['Close'][-1] >= df['44MA'][-1])
+    return (low - .01 * low) <= df['44MA'][-1] <= (high + .01 * high)
 
 
 def calculate_buy_details(stock, df):
@@ -74,7 +72,7 @@ def calculate_buy_details(stock, df):
 def export_to_csv(trades):
     try:
         curr_dir = os.path.dirname(os.path.abspath(__file__))
-        file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + "-TRADES-ANALYSIS.csv"
+        file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + ".csv"
         with open(file_name, "w", newline="") as f:
             title = "stock,entry,stop_loss,target,quantity,money_to_trade".split(",")
             cw = csv.DictWriter(f, title, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -92,7 +90,7 @@ def get_trades(stocks):
         print("Scanning stock number: ", count)
         count += 1
         try:
-            df = get_data(stock, period='350d', interval='1d')
+            df = get_price_data(stock)
             # Add 44 Moving Average
             df['44MA'] = df['Close'].rolling(window=44).mean()
             if not is_stock_rising(df):
@@ -120,8 +118,7 @@ def run():
              [x + ".NS" for x in get_nifty500_stocks()]
     stocks = [x for x in stocks if x not in [x + ".NS" for x in stocks_to_ignore()]]
     stocks = list(set(stocks))
-    print(len(stocks))
-    # stocks = ["LODHA.NS"]
+    print(len(stocks), " Stock are getting scanned")
     trades = get_trades(stocks)
     pprint(trades)
     # optional, comment if not needed
