@@ -7,7 +7,7 @@ from datetime import datetime
 from pprint import pprint
 
 from data.nse import (
-    get_top_stocks_by_market_cap,
+    get_nifty100_stocks,
     get_nifty50_stocks,
     get_nifty500_stocks,
     stocks_to_ignore
@@ -42,7 +42,7 @@ def get_trades(stocks):
 
 def run():
     stocks = [x + ".NS" for x in get_nifty50_stocks()]
-    # [x + ".NS" for x in get_top_stocks_by_market_cap()] + \
+    # [x + ".NS" for x in get_nifty100_stocks()] + \
     # [x + ".NS" for x in get_nifty500_stocks()]
     stocks = [x for x in stocks if x not in [x + ".NS" for x in stocks_to_ignore()]]
     stocks = list(set(stocks))

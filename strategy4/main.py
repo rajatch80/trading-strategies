@@ -15,8 +15,9 @@ from datetime import datetime
 from pprint import pprint
 
 from data.nse import (
-    get_top_stocks_by_market_cap,
     get_nifty50_stocks,
+    get_nifty100_stocks,
+    get_nifty200_stocks,
     get_nifty500_stocks,
     stocks_to_ignore
 )
@@ -48,8 +49,8 @@ def is_probable_buy(df):
         return
     high = df['High'][-1]
     low = df['Low'][-1]
-    # 44 MA should lie between green candle's high-low range +- 1%
-    return (low - .02 * low) <= df['44MA'][-1] <= (high + .02 * high) and (df['Close'][-1] >= df['44MA'][-1])
+    # 44 MA should lie between green candle's high-low range
+    return (low - .05 * low) <= df['44MA'][-1] <= (high + .02 * high) and (df['Close'][-1] >= df['44MA'][-1])
 
 
 def calculate_buy_details(stock, df):
@@ -57,7 +58,7 @@ def calculate_buy_details(stock, df):
     stop_loss = round(0.999 * min(df['Low'][-1], df['Low'][-2]))
     if entry == stop_loss:
         return
-    risk = 500
+    risk = 500 if df['Close'][-1] < 1000 else 1000
     quantity = round(risk / (entry - stop_loss))
     target = 2 * (entry - stop_loss) + entry
     money_to_trade = round(entry) * quantity + 1
@@ -68,6 +69,8 @@ def calculate_buy_details(stock, df):
         'quantity': quantity,
         'target': target,
         'money_to_trade': money_to_trade,
+        'risk': risk,
+        'entry_sl_diff': entry - stop_loss,
     }
 
 
@@ -76,7 +79,7 @@ def export_to_csv(trades):
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + "-TRADES-ANALYSIS.csv"
         with open(file_name, "w", newline="") as f:
-            title = "stock,entry,stop_loss,target,quantity,money_to_trade".split(",")
+            title = "stock,entry,stop_loss,target,quantity,money_to_trade,risk,entry_sl_diff".split(",")
             cw = csv.DictWriter(f, title, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             cw.writeheader()
             cw.writerows(trades)
@@ -88,6 +91,7 @@ def export_to_csv(trades):
 def get_trades(stocks):
     trades = []
     count = 1
+    rising_stocks = []
     for stock in stocks:
         print("Scanning stock number: ", count)
         count += 1
@@ -97,6 +101,7 @@ def get_trades(stocks):
             df['44MA'] = df['Close'].rolling(window=44).mean()
             if not is_stock_rising(df):
                 continue
+            rising_stocks.append(stock)
             if not is_probable_buy(df):
                 continue
             buy_details = calculate_buy_details(stock, df)
@@ -111,17 +116,16 @@ def get_trades(stocks):
             print("Exception occurred >>>>>>>>>>>>>>>>>>>>>>>\n")
             print(e)
         count += 1
+    print("RISING STOCKS ============================>>>>")
+    print(rising_stocks)
     return trades
 
 
 def run():
-    stocks = [x + ".NS" for x in get_nifty50_stocks()] + \
-             [x + ".NS" for x in get_top_stocks_by_market_cap()] + \
-             [x + ".NS" for x in get_nifty500_stocks()]
+    stocks = [x + ".NS" for x in get_nifty500_stocks()]
     stocks = [x for x in stocks if x not in [x + ".NS" for x in stocks_to_ignore()]]
-    stocks = list(set(stocks))
+    # stocks = list(set(stocks))
     print(len(stocks))
-    # stocks = ["LODHA.NS"]
     trades = get_trades(stocks)
     pprint(trades)
     # optional, comment if not needed
