@@ -1,26 +1,40 @@
 import sys
 sys.path.append(__file__)
+
+from data.nse import get_nifty500_stocks, stocks_to_ignore
+from data.from_yfinance import get_data
+
 # Golden Cross Strategy
-from strategy1.main import run as run_strategy1
+from strategy1.main import run as golden_cross
 # SMA50 cuts SMA20 from above Strategy
-from strategy2.main import run as run_strategy2
+from strategy2.main import run as sma50_200
 # Super performance stocks
-from strategy3.main import run as run_strategy3
+from strategy3.main import run as super_performant
 # Swing trading 44 MA strategy
-from strategy4.main import run as run_strategy4
+from strategy4.main import run as swing
 # Intra day trading 44 MA strategy
-from strategy5.main import run as run_strategy5
+from strategy5.main import run as intra_day
 # Golden cross + 44 MA
-from strategy6.main import run as run_strategy6
+from strategy6.main import run as golden_cross_with_44ma
 
 strategies = {
-    'golden_cross': run_strategy1,
-    'sma50_200': run_strategy2,
-    'super_performant': run_strategy3,
-    'swing': run_strategy4,
-    'intra_day': run_strategy5,
-    'golden_cross_with_44ma': run_strategy6
+    'golden_cross': golden_cross,
+    'sma50_200': sma50_200,
+    'super_performant': super_performant,
+    'swing': swing,
+    'intra_day': intra_day,
+    'golden_cross_with_44ma': golden_cross_with_44ma
 }
+
+
+def gather_data():
+    stocks = [x + ".NS" for x in get_nifty500_stocks()]
+    stocks = [x for x in stocks if x not in [x + ".NS" for x in stocks_to_ignore()]]
+    for stock in stocks:
+        df = get_data(stock, period='350d', interval='1d')
+
+
+# gather_data()
 
 
 if len(sys.argv) < 2:

@@ -11,6 +11,7 @@ Criteria:
 """
 import csv
 import os
+from time import sleep
 from datetime import datetime
 from pprint import pprint
 
@@ -24,16 +25,6 @@ from data.nse import (
 from data.from_yfinance import get_data
 
 
-def get_price_data(tickers):
-    ohlc_data = {}
-    for ticker in tickers:
-        ohlc_data[ticker] = get_data(ticker, period='350d', interval='1d')
-        # start = '2021-01-01'
-        # end = '2021-11-30'
-        # ohlc_data[ticker] = get_data(ticker, start=start, end=end, interval='1d')
-    return ohlc_data
-
-
 def is_stock_rising(df):
     last_14_days_trend = df['44MA'][-14:].to_list()
     # 44 MA should go up for last 14 consecutive days
@@ -45,8 +36,8 @@ def is_probable_buy(df):
     if df['Open'][-1] >= df['Close'][-1]:
         return
     # check for bearish green candle, skip
-    if df['Close'][-1] - df['Open'][-1] < df['High'][-1] - df['Close'][-1]:
-        return
+    # if df['Close'][-1] - df['Open'][-1] < df['High'][-1] - df['Close'][-1]:
+    #     return
     high = df['High'][-1]
     low = df['Low'][-1]
     # 44 MA should lie between green candle's high-low range
@@ -60,17 +51,21 @@ def calculate_buy_details(stock, df):
         return
     risk = 500 if df['Close'][-1] < 1000 else 1000
     quantity = round(risk / (entry - stop_loss))
-    target = 2 * (entry - stop_loss) + entry
+    target_1 = 1 * (entry - stop_loss) + entry  # 1:1
+    target_2 = 1.5 * (entry - stop_loss) + entry  # 1:1.5
+    target_3 = 2 * (entry - stop_loss) + entry  # 1:2
     money_to_trade = round(entry) * quantity + 1
     return {
-        'stock': stock.split(".")[0],
-        'entry': entry,
-        'stop_loss': stop_loss,
-        'quantity': quantity,
-        'target': target,
-        'money_to_trade': money_to_trade,
-        'risk': risk,
-        'entry_sl_diff': entry - stop_loss,
+        'Stock': stock.split(".")[0],
+        'Entry': entry,
+        'StopLoss': stop_loss,
+        'Quantity': quantity,
+        'Target1': target_1,
+        'Target2': target_2,
+        'Target3': target_3,
+        'MoneyToTrade': money_to_trade,
+        'Risk': risk,
+        'Entry_SL_Diff': entry - stop_loss,
     }
 
 
@@ -79,7 +74,7 @@ def export_to_csv(trades):
         curr_dir = os.path.dirname(os.path.abspath(__file__))
         file_name = curr_dir + "/" + datetime.today().strftime('%d-%m-%Y') + "-TRADES-ANALYSIS.csv"
         with open(file_name, "w", newline="") as f:
-            title = "stock,entry,stop_loss,target,quantity,money_to_trade,risk,entry_sl_diff".split(",")
+            title = "Stock,Entry,StopLoss,Target1,Target2,Target3,Quantity,MoneyToTrade,Risk,Entry_SL_Diff".split(",")
             cw = csv.DictWriter(f, title, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             cw.writeheader()
             cw.writerows(trades)
@@ -96,6 +91,7 @@ def get_trades(stocks):
         print("Scanning stock number: ", count)
         count += 1
         try:
+            sleep(1)
             df = get_data(stock, period='350d', interval='1d')
             # Add 44 Moving Average
             df['44MA'] = df['Close'].rolling(window=44).mean()
@@ -115,7 +111,7 @@ def get_trades(stocks):
         except Exception as e:
             print("Exception occurred >>>>>>>>>>>>>>>>>>>>>>>\n")
             print(e)
-        count += 1
+
     print("RISING STOCKS ============================>>>>")
     print(rising_stocks)
     return trades
